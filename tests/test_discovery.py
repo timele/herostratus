@@ -26,6 +26,19 @@ class Test_files_discovery(unittest.TestCase):
         self.assertNotEqual(document_info.pages, None)
         self.assertNotEqual(document_info.size, None)
 
+    def test_document_info_can_convert_to_xml(self):
+        app = herostratus.Crawler()
+        filenames = [
+            'file_example_XLSX_1.xlsx', 'file_example_XLSX_50.xlsx',
+            'file_example_XLSX_100.xlsx', 'file_example_XLSX_1000.xlsx',
+            'file_example_XLSX_5000.xlsx'
+        ]
+        for file in filenames:
+            document_info = app.create_document_info_from_file(os.path.join(self.test_dir.name, file))
+            xml = document_info.to_xml()
+            self.assertIsNotNone(xml)
+            self.assertNotEqual(len(xml), 0)
+
     def test_crawler_can_discover_files_in_target_path(self):
         app = herostratus.Crawler()
         files = app.discover(self.test_dir.name)
@@ -35,7 +48,7 @@ class Test_files_discovery(unittest.TestCase):
     def test_crawler_can_collect_file_information(self):
         app = herostratus.Crawler()
         timeline = app.collect_timeline(self.test_dir.name)
-        self.assertEqual(len(timeline), self.file_count)
+        self.assertEqual(timeline.total(), self.file_count)
 
     # DOC
     def test_crawler_can_get_information_from_DOC_file(self):
@@ -73,7 +86,7 @@ class Test_files_discovery(unittest.TestCase):
             file_docu_info = app.create_document_info_from_file(file_path)
             self.assert_document_has_data(file_docu_info)
 
-    # XLX
+    # XLSX
     def test_crawler_can_get_information_from_XLX_file(self):
         app = herostratus.Crawler()
         filenames = [
@@ -127,8 +140,18 @@ class Test_files_discovery(unittest.TestCase):
         print("Filename: {}".format(filename))
         app = herostratus.Crawler()
         timeline = app.collect_timeline(self.test_dir.name)
-        self.assertEqual(len(timeline), self.file_count)
-        app.write_timeline(timeline, filename)
+        self.assertEqual(timeline.total(), self.file_count)
+        app.write_timeline_html(self.test_dir.name, filename, timeline)
+        self.assertTrue(os.path.isfile(filename))
+    
+    # XML Timeline
+    def test_crawler_can_create_XML_timeline(self):
+        filename = os.path.join(os.getcwd(), 'output.xml')
+        print("Filename: {}".format(filename))
+        app = herostratus.Crawler()
+        timeline = app.collect_timeline(self.test_dir.name)
+        self.assertEqual(timeline.total(), self.file_count)
+        app.write_timeline_xml(self.test_dir.name, filename, timeline)
         self.assertTrue(os.path.isfile(filename))
 
 if __name__ == '__main__':
