@@ -13,6 +13,7 @@ import datetime as dt
 from tqdm import tqdm
 import dominate
 import xml.etree.ElementTree as xee
+import xlwt
 
 warnings.filterwarnings('ignore')
 
@@ -293,7 +294,7 @@ class Crawler():
         timeline.sort(key=document_info_sort_date_create)
         return timeline
 
-    def write_processed_document(self, document):
+    def write_html_processed_document(self, document):
         div = dominate.tags.div(_class='document')
         dominate.tags.div(
             dominate.tags.a(document.name, href='%s' % document.path),
@@ -309,23 +310,23 @@ class Crawler():
                 dominate.tags.li('Size: %d' % document.size)
         return div;
 
-    def write_processed(self, documents):
+    def write_html_processed(self, documents):
         div = dominate.tags.div(_class='processed')
         for doc in documents:
-            self.write_processed_document(doc)
+            self.write_html_processed_document(doc)
         return div 
 
-    def write_unprocessed_file(self, file):
+    def write_html_unprocessed_file(self, file):
         li = dominate.tags.li(
             dominate.tags.a(file.name, href='%s' % file.path)
         )
         return li;
 
-    def write_unprocessed(self, documents):
+    def write_html_unprocessed(self, documents):
         div = dominate.tags.div(_class='unprocessed')
         with dominate.tags.ul():
             for doc in documents:
-                self.write_unprocessed_file(doc)
+                self.write_html_unprocessed_file(doc)
         return div 
 
     def write_timeline_html(self, path, filename, timeline):
@@ -338,8 +339,8 @@ class Crawler():
             dominate.tags.link(rel='stylesheet', href='style.css')
             dominate.tags.script(type='text/javascript', src='script.js')
             dominate.tags.h1(path)
-            self.write_processed(timeline.processed)
-            self.write_unprocessed(timeline.unprocessed)
+            self.write_html_processed(timeline.processed)
+            self.write_html_unprocessed(timeline.unprocessed)
         with open(filename, 'w') as f:
             f.write(html_document.render())
 
@@ -356,7 +357,6 @@ class Crawler():
         root.append(processed)
         for doc in timeline.processed:
             doc_xml = doc.to_xml()
-            # print("xml: [{}]".format(doc_xml))
             processed.append(doc_xml)
 
         unprocessed = xee.Element("unprocessed")
@@ -368,6 +368,65 @@ class Crawler():
         tree = xee.ElementTree(root)
         with open(filename, 'wb') as f:
             tree.write(f)
+
+    def write_xls_headers(self, sheet, headers):
+        style_header = xlwt.easyxf('font: bold 1') 
+        for column, header in enumerate(headers):
+            sheet.write(1, column, header, style_header)
+
+    def write_xls_processed_header(self, sheet, path):
+        style_path = xlwt.easyxf('font: bold 1, color blue;') 
+        sheet.write(0, 0, path, style_path)
+        headers = ['#', 'name', 'path', 'date_create', 'author', 'date_modified', 'author_last', 'pages', 'size']
+        self.write_xls_headers(sheet, headers)
+
+    def write_xls_unprocessed_header(self, sheet, path):
+        style_path = xlwt.easyxf('font: bold 1, color red;') 
+        sheet.write(0, 0, path, style_path)
+        headers = ['#', 'name', 'path', 'date_create', 'size']
+        self.write_xls_headers(sheet, headers)
+
+    def write_xls_document(self, sheet, cursor, document):
+        sheet.write(cursor, 0, cursor)
+        sheet.write(cursor, 1, document.name)
+        sheet.write(cursor, 2, 'file:/{}'.format(document.path))
+        sheet.write(cursor, 3, document.date_create.strftime("%m/%d/%Y, %H:%M:%S"))
+        sheet.write(cursor, 4, document.author)
+        sheet.write(cursor, 5, document.date_modified.strftime("%m/%d/%Y, %H:%M:%S"))
+        sheet.write(cursor, 6, document.author_last)
+        sheet.write(cursor, 7, document.pages)
+        sheet.write(cursor, 8, document.size)
+
+    def write_xls_processed_documents(self, sheet, documents):
+        for row, document in enumerate(documents):
+            self.write_xls_document(sheet, row + 2, document)
+
+    def write_xls_file(self, sheet, cursor, file):
+        sheet.write(cursor, 0, cursor)
+        sheet.write(cursor, 1, file.name)
+        sheet.write(cursor, 2, 'file:/{})'.format(file.path))
+        sheet.write(cursor, 3, file.date_create.strftime("%m/%d/%Y, %H:%M:%S"))
+        sheet.write(cursor, 4, file.size)
+
+    def write_xls_unprocessed_files(self, sheet, files):
+        for row, file in enumerate(files):
+            self.write_xls_file(sheet, row + 2, file)
+
+    def write_timeline_xls(self, path, filename, timeline):
+        print(
+            "Writing [{}] documents XLS timeline.\n\tFilename: [{}]\n\tPath: [{}]"
+            .format(timeline.total(), filename, path)
+        )
+        workbook = xlwt.Workbook()
+        sheet = workbook.add_sheet('processed')
+        self.write_xls_processed_header(sheet, path)
+        self.write_xls_processed_documents(sheet, timeline.processed)
+        
+        sheet = workbook.add_sheet('unprocessed')
+        self.write_xls_unprocessed_header(sheet, path)
+        self.write_xls_unprocessed_files(sheet, timeline.unprocessed)
+
+        workbook.save(filename)
 
 if __name__ == "__main__":
     filename_xml = ''
@@ -388,13 +447,20 @@ if __name__ == "__main__":
     filename = args.filename
     filename_xml = os.path.join(os.getcwd(), filename + '.xml')
     filename_html = os.path.join(os.getcwd(), filename + '.html')
-    if os.path.isfile(filename_html) or os.path.isfile(filename_xml):
-        print("Files: {} or {} already exist.".format(filename_xml, filename_html))
+    filename_xls = os.path.join(os.getcwd(), filename + '.xls')
+    if os.path.isfile(filename_xls) or os.path.exists(filename_xml) or os.path.exists(filename_xls):
+        print(
+            "Files: {} or {} or {} already exist."
+            .format(filename_xml, filename_html, filename_xls)
+        )
 
     print('Target path: {}'.format(args.path))
-    print('HTML: {}\nXML: {}'.format(filename_html, filename_xml))
+    print(
+        'HTML: {}\nXML: {}\nXLS: {}'
+        .format(filename_html, filename_xml, filename_xls)
+    )
     crawler = Crawler()    
     timeline = crawler.collect_timeline(args.path)
     crawler.write_timeline_html(args.path, filename_html, timeline)
     crawler.write_timeline_xml(args.path, filename_xml, timeline)
-    
+    crawler.write_timeline_xls(args.path, filename_xls, timeline)    
