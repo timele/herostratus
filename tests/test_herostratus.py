@@ -5,6 +5,7 @@ import tempfile
 import os
 import warnings
 from distutils.dir_util import copy_tree
+import xlrd
 
 from herostratus import herostratus
 
@@ -153,6 +154,52 @@ class Test_files_discovery(unittest.TestCase):
         self.assertEqual(timeline.total(), self.file_count)
         app.write_timeline_xml(self.test_dir.name, filename, timeline)
         self.assertTrue(os.path.isfile(filename))
+
+
+    def assert_xls_processed_header(self, sheet):
+        self.assertEqual(sheet.name, 'processed')
+        self.assertEqual(sheet.cell_value(0,0), self.test_dir.name)
+        self.assertEqual(sheet.cell_value(1,0), '#')
+        self.assertEqual(sheet.cell_value(1,1), 'name')
+        self.assertEqual(sheet.cell_value(1,2), 'path')
+        self.assertEqual(sheet.cell_value(1,3), 'date_create')
+        self.assertEqual(sheet.cell_value(1,4), 'author')
+        self.assertEqual(sheet.cell_value(1,5), 'date_modified')
+        self.assertEqual(sheet.cell_value(1,6), 'author_last')
+        self.assertEqual(sheet.cell_value(1,7), 'pages')
+        self.assertEqual(sheet.cell_value(1,8), 'size')
+
+    def assert_xls_unprocessed_header(self, sheet):
+        self.assertEqual(sheet.name, 'unprocessed')
+        self.assertEqual(sheet.cell_value(0,0), self.test_dir.name)
+        self.assertEqual(sheet.cell_value(1,0), '#')
+        self.assertEqual(sheet.cell_value(1,1), 'name')
+        self.assertEqual(sheet.cell_value(1,2), 'path')
+        self.assertEqual(sheet.cell_value(1,3), 'date_create')
+        self.assertEqual(sheet.cell_value(1,4), 'size')
+
+    # XLS Timeline
+    def test_crawler_can_create_XLS_timeline(self):
+        filename = os.path.join(os.getcwd(), 'output.xls')
+        print("Filename: {}".format(filename))
+        app = herostratus.Crawler()
+        timeline = app.collect_timeline(self.test_dir.name)
+        self.assertEqual(timeline.total(), self.file_count)
+        app.write_timeline_xls(self.test_dir.name, filename, timeline)
+        self.assertTrue(os.path.isfile(filename))
+        book = xlrd.open_workbook(filename)
+        self.assertEqual(book.nsheets, 2)
+        sheet = book.sheet_by_index(0)
+        self.assertIsNotNone(sheet)
+        self.assert_xls_processed_header(sheet)
+        self.assertIsNotNone(sheet.cell_value(2,0))
+        self.assertIsNotNone(sheet.cell_value(2,1))
+
+        sheet = book.sheet_by_index(1)
+        self.assertIsNotNone(sheet)
+        self.assert_xls_unprocessed_header(sheet)
+        self.assertIsNotNone(sheet.cell_value(2,0))
+        self.assertIsNotNone(sheet.cell_value(2,1))
 
 if __name__ == '__main__':
     unittest.main()
