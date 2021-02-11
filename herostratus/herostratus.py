@@ -11,6 +11,8 @@ import argparse
 import warnings
 import datetime as dt
 from tqdm import tqdm
+import dominate
+import xml.etree.ElementTree as xee
 
 warnings.filterwarnings('ignore')
 
@@ -35,11 +37,11 @@ class DocumentInfo():
         self.name = os.path.basename(path)
         self.author = None
         self.author_last = None
-
         self.date_create = None
         self.date_modified = None
         self.size = os.path.getsize(path)
         self.pages = 0
+        self.processed = False
 
     def set_date_create_from_file(self):
         fname = pathlib.Path(self.path)
@@ -48,6 +50,42 @@ class DocumentInfo():
     def set_date_modified_from_file(self):
         fname = pathlib.Path(self.path)
         self.date_modified = dt.datetime.fromtimestamp(fname.stat().st_mtime)
+
+    def to_xml_document(self):
+        root = xee.Element("document")
+        e_name = xee.SubElement(root, "name")
+        e_name.text = self.name
+        e_path = xee.SubElement(root, "path")
+        e_path.text = self.path
+        e_author = xee.SubElement(root, "author")
+        e_author.text = self.author
+        e_author_last = xee.SubElement(root, "author_last")
+        e_author_last.text = self.author_last
+        e_date_create = xee.SubElement(root, "date_create")
+        e_date_create.text = '' if self.date_create == None else self.date_create.strftime("%m/%d/%Y, %H:%M:%S")
+        e_date_modified = xee.SubElement(root, "date_modified")
+        e_date_modified.text = '' if self.date_modified == None else self.date_modified.strftime("%m/%d/%Y, %H:%M:%S")
+        e_pages = xee.SubElement(root, "pages")
+        e_pages.text = str(self.pages)
+        e_size = xee.SubElement(root, "size")
+        e_size.text = str(self.size)
+        return root
+
+    def to_xml_file(self):
+        root = xee.Element("file")
+        e_name = xee.SubElement(root, "name")
+        e_name.text = self.name
+        e_path = xee.SubElement(root, "path")
+        e_path.text = self.path
+        e_size = xee.SubElement(root, "size")
+        e_size.text = str(self.size)
+        return root
+
+    def to_xml(self):
+        if self.processed:
+            return self.to_xml_document()
+        else:
+            return self.to_xml_file()
 
     def __str__(self):
         return "\nName: {}, Author: {}\nDate_c: {} Date_m: {}\nPages: {} Size: {}\nPath{}".format(
@@ -59,6 +97,23 @@ def document_info_sort_date_create(e):
 
 def document_info_sort_date_modified(e):
     return e.date_create
+class Timeline():
+    def __init__(self):
+        self.processed = []
+        self.unprocessed = []
+
+    def add(self, doc):
+        if doc.processed:
+            self.processed.append(doc)
+        else:
+            self.unprocessed.append(doc)
+
+    def total(self):
+        return len(self.processed) + len(self.unprocessed)
+
+    def sort(self, key=document_info_sort_date_create):
+        self.processed.sort(key=key)
+        self.unprocessed.sort(key=key)
 
 class MagicProcessor():
     def __init__(self):
@@ -83,6 +138,7 @@ class MagicProcessor():
             doc_info.set_date_modified_from_file()
 
         doc_info.pages = fetch_or_fail('Number of Pages:', file_magic)
+        doc_info.processed = True
         return doc_info
 
 class XlsProcessor():
@@ -112,6 +168,7 @@ class DocxProcessor():
             doc_info.set_date_modified_from_file()
             
         doc_info.pages = 0
+        doc_info.processed = True
         return doc_info
 
 class PptxProcessor():
@@ -133,6 +190,7 @@ class PptxProcessor():
             doc_info.set_date_modified_from_file()
 
         doc_info.pages = 0
+        doc_info.processed = True
         return doc_info
 
 class PdfProcessor():
@@ -159,8 +217,21 @@ class PdfProcessor():
         if doc_info.date_modified == None:
             doc_info.set_date_modified_from_file()
 
+        doc_info.processed = True
         return doc_info
 
+class DefaultProcessor():
+    def __init__(self):
+        self._data = None
+
+    def process(self, filename):
+        doc_info = DocumentInfo(filename)
+        doc_info.author = None
+        doc_info.author_last = None
+        doc_info.set_date_create_from_file()
+        doc_info.set_date_modified_from_file()
+        doc_info.processed = False;
+        return doc_info
 class DocumentProcessorFactory():
     def __init__(self):
         self._processors = {}
@@ -171,7 +242,7 @@ class DocumentProcessorFactory():
     def get_processor(self, mime):
         processor = self._processors.get(mime)
         if not processor:
-            raise ValueError(mime)
+            processor = DefaultProcessor
         return processor()
 
 processor_factory = DocumentProcessorFactory()
@@ -207,51 +278,123 @@ class Crawler():
         try:
             processor = processor_factory.get_processor(file_magic)
         except ValueError:
-            print("File: [{}] is not supported.".format(filename))
+            print("File: [{}] is not supported.".format(filename))            
         else:
             document_info = processor.process(filename)
         return document_info
 
-    def collect_timeline(self, target_path="/tmp"):
-        timeline = []
+    def collect_timeline(self, target_path="/tmp")-> Timeline:
+        timeline = Timeline()
         files = self.discover(target_path)
         for file in files:
             file_docu_info = self.create_document_info_from_file(file)
-            if file_docu_info != None:
-                timeline.append(file_docu_info)
-        print("Files discovered: [{}]".format(len(timeline)))
+            timeline.add(file_docu_info)
+        print("Documents discovered: [{}]".format(timeline.total()))
         timeline.sort(key=document_info_sort_date_create)
         return timeline
 
-    def rebuild_timeline_by_date_modified(self, timeline): 
-        return sorted(timeline, key=document_info_sort_date_modified)
+    def write_processed_document(self, document):
+        div = dominate.tags.div(_class='document')
+        dominate.tags.div(
+            dominate.tags.a(document.name, href='%s' % document.path),
+            _class='header'
+        )
+        with dominate.tags.div(_class='content'):
+            with dominate.tags.ul():
+                dominate.tags.li('Author: %s' % document.author)
+                dominate.tags.li('Create date: %s' % document.date_create)
+                dominate.tags.li('Last editor: %s' % document.author_last)
+                dominate.tags.li('Modified date: %s' % document.date_modified)
+                dominate.tags.li('Pages: %s' % document.pages)
+                dominate.tags.li('Size: %d' % document.size)
+        return div;
 
-    def write_timeline(self, timeline, target_filename="output.html"):
-        pass
+    def write_processed(self, documents):
+        div = dominate.tags.div(_class='processed')
+        for doc in documents:
+            self.write_processed_document(doc)
+        return div 
+
+    def write_unprocessed_file(self, file):
+        li = dominate.tags.li(
+            dominate.tags.a(file.name, href='%s' % file.path)
+        )
+        return li;
+
+    def write_unprocessed(self, documents):
+        div = dominate.tags.div(_class='unprocessed')
+        with dominate.tags.ul():
+            for doc in documents:
+                self.write_unprocessed_file(doc)
+        return div 
+
+    def write_timeline_html(self, path, filename, timeline):
+        print(
+            "Writing [{}] documents HTML timeline.\n\tFilename: [{}]\n\tPath: [{}]"
+            .format(timeline.total(), filename, path)
+        )
+        html_document = dominate.document(path)
+        with html_document.head:
+            dominate.tags.link(rel='stylesheet', href='style.css')
+            dominate.tags.script(type='text/javascript', src='script.js')
+            dominate.tags.h1(path)
+            self.write_processed(timeline.processed)
+            self.write_unprocessed(timeline.unprocessed)
+        with open(filename, 'w') as f:
+            f.write(html_document.render())
+
+    def write_timeline_xml(self, path, filename, timeline):
+        print(
+            "Writing [{}] documents XML timeline.\n\tFilename: [{}]\n\tPath: [{}]"
+            .format(timeline.total(), filename, path)
+        )
+        root = xee.Element("path")
+        e_path = xee.SubElement(root, "path")
+        e_path.text = path
+
+        processed = xee.Element("processed")
+        root.append(processed)
+        for doc in timeline.processed:
+            doc_xml = doc.to_xml()
+            # print("xml: [{}]".format(doc_xml))
+            processed.append(doc_xml)
+
+        unprocessed = xee.Element("unprocessed")
+        root.append(unprocessed)
+        for file in timeline.unprocessed:
+            file_xml = file.to_xml()
+            unprocessed.append(file_xml)
+
+        tree = xee.ElementTree(root)
+        with open(filename, 'wb') as f:
+            tree.write(f)
 
 if __name__ == "__main__":
+    filename_xml = ''
+    filename_html = ''
+
     parser = argparse.ArgumentParser()
- 
     parser.add_argument("path")
     parser.add_argument("filename")
- 
-    # parse the arguments
     args = parser.parse_args()
  
     # get the arguments value
     if args.path == None or not os.path.isdir(args.path):
         print("Invalid target path: {}".format(args.path))
-
-    if args.filename == None or os.path.isfile(args.filename):
-        print("Invalid filename: {} or it exists.".format(args.filename))
     
-    print("Target path: {}".format(args.path))
-    print("Writing to: {}".format(args.filename))
-    crawler = Crawler()
-    timeline = crawler.collect_timeline(args.path)
-    print("10 first elements")
-    for i in range(10):
-        print("{}".format(timeline[i]))
+    if args.filename == None:
+        print("Invalid filename: {}".format(args.filename))
+    
+    filename = args.filename
+    filename_xml = os.path.join(os.getcwd(), filename + '.xml')
+    filename_html = os.path.join(os.getcwd(), filename + '.html')
+    if os.path.isfile(filename_html) or os.path.isfile(filename_xml):
+        print("Files: {} or {} already exist.".format(filename_xml, filename_html))
 
-    crawler.write_timeline(args.filename, timeline)
-        
+    print('Target path: {}'.format(args.path))
+    print('HTML: {}\nXML: {}'.format(filename_html, filename_xml))
+    crawler = Crawler()    
+    timeline = crawler.collect_timeline(args.path)
+    crawler.write_timeline_html(args.path, filename_html, timeline)
+    crawler.write_timeline_xml(args.path, filename_xml, timeline)
+    

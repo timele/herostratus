@@ -17,6 +17,7 @@ delayed-assert==0.3.5
 dill==0.3.3
 distlib==0.3.0
 distro==1.4.0
+dominate==2.6.0
 execnet==1.8.0
 Faker==6.0.0
 html5lib==1.0.1
