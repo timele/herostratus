@@ -371,10 +371,8 @@ class Crawler():
 
     def write_xls_headers(self, sheet, headers):
         style_header = xlwt.easyxf('font: bold 1') 
-        cursor = 0
-        for header in headers:
-            sheet.write(1, cursor, header, style_header)
-            cursor += 1
+        for column, header in enumerate(headers):
+            sheet.write(1, column, header, style_header)
 
     def write_xls_processed_header(self, sheet, path):
         style_path = xlwt.easyxf('font: bold 1, color blue;') 
@@ -391,10 +389,10 @@ class Crawler():
     def write_xls_document(self, sheet, cursor, document):
         sheet.write(cursor, 0, cursor)
         sheet.write(cursor, 1, document.name)
-        sheet.write(cursor, 2, document.path)
-        sheet.write(cursor, 3, document.date_create)
+        sheet.write(cursor, 2, 'file:/{}'.format(document.path))
+        sheet.write(cursor, 3, document.date_create.strftime("%m/%d/%Y, %H:%M:%S"))
         sheet.write(cursor, 4, document.author)
-        sheet.write(cursor, 5, document.date_modified)
+        sheet.write(cursor, 5, document.date_modified.strftime("%m/%d/%Y, %H:%M:%S"))
         sheet.write(cursor, 6, document.author_last)
         sheet.write(cursor, 7, document.pages)
         sheet.write(cursor, 8, document.size)
@@ -406,8 +404,8 @@ class Crawler():
     def write_xls_file(self, sheet, cursor, file):
         sheet.write(cursor, 0, cursor)
         sheet.write(cursor, 1, file.name)
-        sheet.write(cursor, 2, file.path)
-        sheet.write(cursor, 3, file.date_create)
+        sheet.write(cursor, 2, 'file:/{})'.format(file.path))
+        sheet.write(cursor, 3, file.date_create.strftime("%m/%d/%Y, %H:%M:%S"))
         sheet.write(cursor, 4, file.size)
 
     def write_xls_unprocessed_files(self, sheet, files):
