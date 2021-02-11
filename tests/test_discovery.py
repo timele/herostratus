@@ -122,14 +122,14 @@ class Test_files_discovery(unittest.TestCase):
             self.assert_document_has_data(file_docu_info)
 
     # HTML Timeline
-    # def test_crawler_can_create_HTML_timeline(self):
-    #     filename = os.path.join(os.getcwd(), 'output.html')
-    #     print("Filename: {}".format(filename))
-    #     app = herostratus.Crawler()
-    #     timeline = app.collect_timeline(self.test_dir.name)
-    #     self.assertEqual(len(timeline), self.file_count)
-    #     herostratus.writeHTML(timeline, filename)
-    #     self.assertTrue(os.path.isfile(filename))
+    def test_crawler_can_create_HTML_timeline(self):
+        filename = os.path.join(os.getcwd(), 'output.html')
+        print("Filename: {}".format(filename))
+        app = herostratus.Crawler()
+        timeline = app.collect_timeline(self.test_dir.name)
+        self.assertEqual(len(timeline), self.file_count)
+        app.write_timeline(timeline, filename)
+        self.assertTrue(os.path.isfile(filename))
 
 if __name__ == '__main__':
     unittest.main()

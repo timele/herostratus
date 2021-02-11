@@ -226,7 +226,7 @@ class Crawler():
     def rebuild_timeline_by_date_modified(self, timeline): 
         return sorted(timeline, key=document_info_sort_date_modified)
 
-    def write_timeline(self, timeline, target_filename="output.html"):
+    def write_timeline(self, timeline, target_filename):
         pass
 
 if __name__ == "__main__":
