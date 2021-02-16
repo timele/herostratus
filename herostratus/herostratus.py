@@ -6,7 +6,7 @@ import magic
 import re
 from docx import Document
 from pptx import Presentation
-from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfFileReader, utils
 import argparse
 import warnings
 import datetime as dt
@@ -200,22 +200,24 @@ class PdfProcessor():
         # print("PDF: {}".format(filename))
         doc_info = DocumentInfo(filename)
         doc_info.author_last = None
-        file = open(filename, 'rb')
-        pdf = PdfFileReader(file)
-        info = pdf.documentInfo
-        xmp = pdf.getXmpMetadata()
-        doc_info.pages = pdf.getNumPages()
-        if info:
-            doc_info.author = info.author
-        if xmp:
-            doc_info.date_create = xmp.xmp_createDate
-            doc_info.date_modified = xmp.xmp_modifyDate
-        if doc_info.date_create == None:
+        try:
+            pdf = PdfFileReader(filename, strict=False)
+            info = pdf.documentInfo
+            xmp = pdf.getXmpMetadata()
+            doc_info.pages = pdf.getNumPages()
+            if info:
+                doc_info.author = info.author
+            if xmp:
+                doc_info.date_create = xmp.xmp_createDate
+                doc_info.date_modified = xmp.xmp_modifyDate
+            if doc_info.date_create == None:
+                doc_info.set_date_create_from_file()
+            if doc_info.date_modified == None:
+                doc_info.set_date_modified_from_file()
+        except utils.PdfReadError:
+            doc_info.processed = False
             doc_info.set_date_create_from_file()
-        if doc_info.date_modified == None:
             doc_info.set_date_modified_from_file()
-        file.close()
-        doc_info.processed = True
         return doc_info
 
 class DefaultProcessor():
@@ -406,21 +408,33 @@ class Crawler():
     def write_xls_unprocessed_files(self, sheet, files):
         for row, file in enumerate(files):
             self.write_xls_file(sheet, row + 2, file)
+    
+    def weite_xls_headers(self, sheet, headers):
+
+    def write_xls_documents(self, sheet, headers, documents):
+        self.write_xls_headers(sheet, headers)
+
 
     def write_timeline_xls(self, path, filename, timeline):
         print(
             "Writing [{}] documents XLS timeline.\n\tFilename: [{}]\n\tPath: [{}]"
             .format(timeline.total(), filename, path)
         )
+        headers_processed = [
+            '#', 'name', 'path', 
+            'date_create', 'author', 
+            'date_modified', 'author_last', 
+            'pages', 'size'
+        ]
+        headers_unprocessed = [
+            '#', 'name', 'path', 
+            'date_create', 'size'
+        ]
         workbook = xlwt.Workbook()
         sheet = workbook.add_sheet('processed')
-        self.write_xls_processed_header(sheet, path)
-        self.write_xls_processed_documents(sheet, timeline.processed)
-        
+        self.write_xls_documents(sheet, headers_processed, timeline.processed)
         sheet = workbook.add_sheet('unprocessed')
-        self.write_xls_unprocessed_header(sheet, path)
-        self.write_xls_unprocessed_files(sheet, timeline.unprocessed)
-
+        self.write_xls_documents(sheet, headers_unprocessed, timeline.unprocessed)
         workbook.save(filename)
 
 if __name__ == "__main__":
