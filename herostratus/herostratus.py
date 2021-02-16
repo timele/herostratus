@@ -269,6 +269,8 @@ class Crawler():
             for fname in fileList:
                 filename = os.path.join(dirName, fname)
                 filelist.append(filename)
+            if len(subdirList) > 0:
+                del subdirList[0]
         return filelist
 
     def create_document_info_from_file(self, filename):
