@@ -385,7 +385,7 @@ class Crawler():
         self.write_xls_headers(sheet, headers)
 
     def write_xls_document(self, sheet, cursor, document):
-        sheet.write(cursor, 0, '')
+        sheet.write(cursor, 0, cursor - 1)
         sheet.write(cursor, 1, document.name)
         sheet.write(cursor, 2, 'file:/{}'.format(document.path))
         sheet.write(cursor, 3, document.date_create.strftime("%m/%d/%Y, %H:%M:%S"))
@@ -401,7 +401,7 @@ class Crawler():
             self.write_xls_document(sheet, row_start + row, document)
 
     def write_xls_file(self, sheet, cursor, file):
-        sheet.write(cursor, 0, cursor)
+        sheet.write(cursor, 0, cursor - 1)
         sheet.write(cursor, 1, file.name)
         sheet.write(cursor, 2, 'file:/{})'.format(file.path))
         sheet.write(cursor, 3, file.date_create.strftime("%m/%d/%Y, %H:%M:%S"))
