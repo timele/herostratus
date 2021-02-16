@@ -24,7 +24,6 @@ class Test_files_discovery(unittest.TestCase):
 
     def assert_document_has_data(self, document_info):
         self.assertNotEqual(document_info.name, None)
-        self.assertNotEqual(document_info.pages, None)
         self.assertNotEqual(document_info.size, None)
 
     def test_document_info_can_convert_to_xml(self):

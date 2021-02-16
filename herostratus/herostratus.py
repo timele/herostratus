@@ -41,7 +41,7 @@ class DocumentInfo():
         self.date_create = None
         self.date_modified = None
         self.size = os.path.getsize(path)
-        self.pages = 0
+        self.pages = None
         self.processed = False
 
     def set_date_create_from_file(self):
@@ -156,19 +156,18 @@ class DocxProcessor():
 
     def process(self, filename):
         doc_info = DocumentInfo(filename)
-        document = Document(filename)
+        file = open(filename, 'rb')
+        document = Document(file)
         core_props = document.core_properties;
         doc_info.author = core_props.author
         doc_info.author_last = core_props.last_modified_by
         doc_info.date_create = core_props.created
         doc_info.date_modified = core_props.modified
-
         if doc_info.date_create == None:
             doc_info.set_date_create_from_file()
         if doc_info.date_modified == None:
             doc_info.set_date_modified_from_file()
-            
-        doc_info.pages = 0
+        file.close()
         doc_info.processed = True
         return doc_info
 
@@ -178,19 +177,18 @@ class PptxProcessor():
 
     def process(self, filename):
         doc_info = DocumentInfo(filename)
-        document = Presentation(filename)
+        file = open(filename, 'rb')
+        document = Presentation(file)
         core_props = document.core_properties;
         doc_info.author = core_props.author
         doc_info.author_last = core_props.last_modified_by
         doc_info.date_create = core_props.created
         doc_info.date_modified = core_props.modified
-
         if doc_info.date_create == None:
             doc_info.set_date_create_from_file()
         if doc_info.date_modified == None:
             doc_info.set_date_modified_from_file()
-
-        doc_info.pages = 0
+        file.close()
         doc_info.processed = True
         return doc_info
 
@@ -224,7 +222,6 @@ class PdfProcessor():
 class DefaultProcessor():
     def __init__(self):
         self._data = None
-
     def process(self, filename):
         doc_info = DocumentInfo(filename)
         doc_info.author = None
