@@ -408,12 +408,6 @@ class Crawler():
     def write_xls_unprocessed_files(self, sheet, files):
         for row, file in enumerate(files):
             self.write_xls_file(sheet, row + 2, file)
-    
-    def weite_xls_headers(self, sheet, headers):
-
-    def write_xls_documents(self, sheet, headers, documents):
-        self.write_xls_headers(sheet, headers)
-
 
     def write_timeline_xls(self, path, filename, timeline):
         print(
@@ -432,9 +426,11 @@ class Crawler():
         ]
         workbook = xlwt.Workbook()
         sheet = workbook.add_sheet('processed')
-        self.write_xls_documents(sheet, headers_processed, timeline.processed)
+        self.write_xls_processed_header(sheet, path)
+        self.write_xls_processed_documents(sheet, timeline.processed)
         sheet = workbook.add_sheet('unprocessed')
-        self.write_xls_documents(sheet, headers_unprocessed, timeline.unprocessed)
+        self.write_xls_unprocessed_header(sheet, path)
+        self.write_xls_unprocessed_files(sheet, timeline.unprocessed)
         workbook.save(filename)
 
 if __name__ == "__main__":
