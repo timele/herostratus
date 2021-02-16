@@ -398,7 +398,7 @@ class Crawler():
         sheet.write(cursor, 8, document.size)
 
     def write_xls_processed_documents(self, sheet, documents):
-        raw_start = 2
+        row_start = 2
         for row, document in enumerate(documents):
             self.write_xls_document(sheet, row_start + row, document)
 
