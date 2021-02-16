@@ -200,22 +200,21 @@ class PdfProcessor():
         # print("PDF: {}".format(filename))
         doc_info = DocumentInfo(filename)
         doc_info.author_last = None
-        with open(filename, 'rb') as f:
-            pdf = PdfFileReader(f)
-            info = pdf.documentInfo
-            xmp = pdf.getXmpMetadata()
-            doc_info.pages = pdf.getNumPages()
-            if info:
-                doc_info.author = info.author
-            if xmp:
-                doc_info.date_create = xmp.xmp_createDate
-                doc_info.date_modified = xmp.xmp_modifyDate
-        
+        file = open(filename, 'rb')
+        pdf = PdfFileReader(file)
+        info = pdf.documentInfo
+        xmp = pdf.getXmpMetadata()
+        doc_info.pages = pdf.getNumPages()
+        if info:
+            doc_info.author = info.author
+        if xmp:
+            doc_info.date_create = xmp.xmp_createDate
+            doc_info.date_modified = xmp.xmp_modifyDate
         if doc_info.date_create == None:
             doc_info.set_date_create_from_file()
         if doc_info.date_modified == None:
             doc_info.set_date_modified_from_file()
-
+        file.close()
         doc_info.processed = True
         return doc_info
 

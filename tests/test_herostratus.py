@@ -136,7 +136,7 @@ class Test_files_discovery(unittest.TestCase):
 
     # HTML Timeline
     def test_crawler_can_create_HTML_timeline(self):
-        filename = os.path.join(os.getcwd(), 'output.html')
+        filename = os.path.join(os.getcwd(), '/tmp/output.html')
         print("Filename: {}".format(filename))
         app = herostratus.Crawler()
         timeline = app.collect_timeline(self.test_dir.name)
@@ -146,7 +146,7 @@ class Test_files_discovery(unittest.TestCase):
     
     # XML Timeline
     def test_crawler_can_create_XML_timeline(self):
-        filename = os.path.join(os.getcwd(), 'output.xml')
+        filename = os.path.join(os.getcwd(), '/tmp/output.xml')
         print("Filename: {}".format(filename))
         app = herostratus.Crawler()
         timeline = app.collect_timeline(self.test_dir.name)
@@ -179,7 +179,7 @@ class Test_files_discovery(unittest.TestCase):
 
     # XLS Timeline
     def test_crawler_can_create_XLS_timeline(self):
-        filename = os.path.join(os.getcwd(), 'output.xls')
+        filename = os.path.join(os.getcwd(), '/tmp/output.xls')
         print("Filename: {}".format(filename))
         app = herostratus.Crawler()
         timeline = app.collect_timeline(self.test_dir.name)
