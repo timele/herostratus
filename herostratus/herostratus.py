@@ -199,11 +199,11 @@ class PdfProcessor():
     def process(self, filename):
         # print("PDF: {}".format(filename))
         doc_info = DocumentInfo(filename)
-        doc_info.author_last = None
+        file = open(filename, 'rb')
         try:
-            pdf = PdfFileReader(filename, strict=False)
+            pdf = PdfFileReader(file, strict=False)
             info = pdf.documentInfo
-            xmp = pdf.getXmpMetadata()
+            xmp = pdf.xmpMetadata
             doc_info.pages = pdf.getNumPages()
             if info:
                 doc_info.author = info.author
@@ -214,10 +214,12 @@ class PdfProcessor():
                 doc_info.set_date_create_from_file()
             if doc_info.date_modified == None:
                 doc_info.set_date_modified_from_file()
+            doc_info.processed = True
         except utils.PdfReadError:
-            doc_info.processed = False
+            print('PDF: [{}] processing error'.format(filename))
             doc_info.set_date_create_from_file()
             doc_info.set_date_modified_from_file()
+        file.close()
         return doc_info
 
 class DefaultProcessor():
